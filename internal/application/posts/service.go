@@ -43,6 +43,7 @@ type UpsertInput struct {
 	Content  string
 	Status   domain.PostStatus
 	AuthorID *uint64
+	ImageIDs []uint64
 }
 
 func validateInput(input UpsertInput) error {
@@ -74,6 +75,7 @@ func (s *Service) Create(ctx context.Context, identity auth.Identity, input Upse
 		Title:    strings.TrimSpace(input.Title),
 		Content:  strings.TrimSpace(input.Content),
 		AuthorID: authorID,
+		Images:   input.ImageIDs,
 		Status:   input.Status,
 	}
 	if err := s.repo.Create(ctx, post); err != nil {
@@ -105,6 +107,7 @@ func (s *Service) Update(ctx context.Context, identity auth.Identity, id uint64,
 	post.Title = strings.TrimSpace(input.Title)
 	post.Content = strings.TrimSpace(input.Content)
 	post.Status = input.Status
+	post.Images = input.ImageIDs
 	if err := s.repo.Update(ctx, post); err != nil {
 		return nil, err
 	}

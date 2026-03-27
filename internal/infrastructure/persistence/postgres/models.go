@@ -43,3 +43,27 @@ type RefreshTokenModel struct {
 func (RefreshTokenModel) TableName() string {
 	return "refresh_tokens"
 }
+
+type MediaModel struct {
+	ID           uint64    `gorm:"primaryKey;autoIncrement"`
+	OriginalName string    `gorm:"size:255;not null"`
+	StoredName   string    `gorm:"size:255;uniqueIndex;not null"`
+	ContentType  string    `gorm:"size:64;not null"`
+	SizeBytes    int64     `gorm:"not null"`
+	UploaderID   uint64    `gorm:"not null;index"`
+	CreatedAt    time.Time `gorm:"not null"`
+}
+
+func (MediaModel) TableName() string {
+	return "media"
+}
+
+type PostImageModel struct {
+	PostID   uint64 `gorm:"primaryKey"`
+	MediaID  uint64 `gorm:"primaryKey"`
+	Position int    `gorm:"not null;default:0"`
+}
+
+func (PostImageModel) TableName() string {
+	return "post_images"
+}

@@ -26,6 +26,7 @@ type postRequest struct {
 	Content  string            `json:"content" validate:"required,min=1"`
 	Status   domain.PostStatus `json:"status" validate:"required,oneof=draft published"`
 	AuthorID *uint64           `json:"author_id,omitempty"`
+	ImageIDs []uint64          `json:"image_ids,omitempty"`
 }
 
 func (h *PostsHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +82,7 @@ func (h *PostsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Content:  req.Content,
 		Status:   req.Status,
 		AuthorID: req.AuthorID,
+		ImageIDs: req.ImageIDs,
 	})
 	if err != nil {
 		writeError(w, err)
@@ -114,6 +116,7 @@ func (h *PostsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Content:  req.Content,
 		Status:   req.Status,
 		AuthorID: req.AuthorID,
+		ImageIDs: req.ImageIDs,
 	})
 	if err != nil {
 		writeError(w, err)

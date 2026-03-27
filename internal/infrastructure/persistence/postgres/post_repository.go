@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"sort"
 
 	"blog_api/internal/domain"
 
@@ -22,7 +23,7 @@ func (r *PostRepository) List(ctx context.Context) ([]domain.Post, error) {
 	if err := r.db.WithContext(ctx).Order("created_at DESC").Find(&models).Error; err != nil {
 		return nil, err
 	}
-	return mapPosts(models), nil
+	return r.attachImages(ctx, mapPosts(models))
 }
 
 func (r *PostRepository) ListByAuthor(ctx context.Context, authorID uint64) ([]domain.Post, error) {
@@ -30,7 +31,7 @@ func (r *PostRepository) ListByAuthor(ctx context.Context, authorID uint64) ([]d
 	if err := r.db.WithContext(ctx).Where("author_id = ?", authorID).Order("created_at DESC").Find(&models).Error; err != nil {
 		return nil, err
 	}
-	return mapPosts(models), nil
+	return r.attachImages(ctx, mapPosts(models))
 }
 
 func (r *PostRepository) GetByID(ctx context.Context, id uint64) (*domain.Post, error) {
@@ -42,7 +43,13 @@ func (r *PostRepository) GetByID(ctx context.Context, id uint64) (*domain.Post, 
 	if err != nil {
 		return nil, err
 	}
-	return mapPostDomain(model), nil
+	post := mapPostDomain(model)
+	images, err := r.loadImageIDs(ctx, post.ID)
+	if err != nil {
+		return nil, err
+	}
+	post.Images = images
+	return post, nil
 }
 
 func (r *PostRepository) Create(ctx context.Context, post *domain.Post) error {
@@ -58,7 +65,7 @@ func (r *PostRepository) Create(ctx context.Context, post *domain.Post) error {
 	post.ID = model.ID
 	post.CreatedAt = model.CreatedAt
 	post.UpdatedAt = model.UpdatedAt
-	return nil
+	return r.syncImages(ctx, post.ID, post.Images)
 }
 
 func (r *PostRepository) Update(ctx context.Context, post *domain.Post) error {
@@ -71,7 +78,7 @@ func (r *PostRepository) Update(ctx context.Context, post *domain.Post) error {
 	if err := r.db.WithContext(ctx).Model(&PostModel{}).Where("id = ?", post.ID).Updates(update).Error; err != nil {
 		return err
 	}
-	return nil
+	return r.syncImages(ctx, post.ID, post.Images)
 }
 
 func (r *PostRepository) Delete(ctx context.Context, id uint64) error {
@@ -83,6 +90,56 @@ func (r *PostRepository) Delete(ctx context.Context, id uint64) error {
 		return gorm.ErrRecordNotFound
 	}
 	return nil
+}
+
+// syncImages replaces the post_images rows for a given post.
+func (r *PostRepository) syncImages(ctx context.Context, postID uint64, mediaIDs []uint64) error {
+	if err := r.db.WithContext(ctx).Where("post_id = ?", postID).Delete(&PostImageModel{}).Error; err != nil {
+		return err
+	}
+	for i, mid := range mediaIDs {
+		row := PostImageModel{PostID: postID, MediaID: mid, Position: i}
+		if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// loadImageIDs returns media IDs for a single post, ordered by position.
+func (r *PostRepository) loadImageIDs(ctx context.Context, postID uint64) ([]uint64, error) {
+	var rows []PostImageModel
+	if err := r.db.WithContext(ctx).Where("post_id = ?", postID).Order("position").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	ids := make([]uint64, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.MediaID)
+	}
+	return ids, nil
+}
+
+// attachImages bulk-loads images for a slice of posts.
+func (r *PostRepository) attachImages(ctx context.Context, posts []domain.Post) ([]domain.Post, error) {
+	if len(posts) == 0 {
+		return posts, nil
+	}
+	postIDs := make([]uint64, 0, len(posts))
+	for _, p := range posts {
+		postIDs = append(postIDs, p.ID)
+	}
+	var rows []PostImageModel
+	if err := r.db.WithContext(ctx).Where("post_id IN ?", postIDs).Order("position").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	mapping := make(map[uint64][]uint64)
+	for _, row := range rows {
+		mapping[row.PostID] = append(mapping[row.PostID], row.MediaID)
+	}
+	for i := range posts {
+		posts[i].Images = mapping[posts[i].ID]
+	}
+	return posts, nil
 }
 
 func mapPosts(models []PostModel) []domain.Post {
@@ -104,3 +161,6 @@ func mapPostDomain(model PostModel) *domain.Post {
 		UpdatedAt: model.UpdatedAt,
 	}
 }
+
+// Ensure sort import is used.
+var _ = sort.Strings

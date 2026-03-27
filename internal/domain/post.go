@@ -14,6 +14,7 @@ type Post struct {
 	Title     string
 	Content   string
 	AuthorID  uint64
+	Images    []uint64
 	Status    PostStatus
 	CreatedAt time.Time
 	UpdatedAt time.Time

@@ -26,3 +26,10 @@ type RefreshTokenRepository interface {
 	Rotate(ctx context.Context, oldTokenID string, newToken *RefreshTokenSession, revokedAt time.Time) error
 	RevokeByTokenID(ctx context.Context, tokenID string, revokedAt time.Time) error
 }
+
+type MediaRepository interface {
+	Create(ctx context.Context, media *Media) error
+	GetByID(ctx context.Context, id uint64) (*Media, error)
+	ListByIDs(ctx context.Context, ids []uint64) ([]Media, error)
+	Delete(ctx context.Context, id uint64) error
+}

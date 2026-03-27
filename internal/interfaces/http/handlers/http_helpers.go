@@ -7,6 +7,8 @@ import (
 	"net/http"
 
 	"blog_api/internal/application"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
@@ -44,4 +46,8 @@ func writeError(w http.ResponseWriter, err error) {
 		message = "conflict"
 	}
 	writeJSON(w, status, map[string]string{"error": message})
+}
+
+func extractURLParam(r *http.Request, key string) string {
+	return chi.URLParam(r, key)
 }

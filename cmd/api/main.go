@@ -2,9 +2,11 @@ package main
 
 import (
 	"blog_api/internal/application/auth"
+	"blog_api/internal/application/media"
 	"blog_api/internal/application/posts"
 	"blog_api/internal/config"
 	"blog_api/internal/infrastructure/persistence/postgres"
+	"blog_api/internal/infrastructure/storage"
 	"context"
 	"errors"
 	"log"
@@ -40,18 +42,26 @@ func main() {
 	userRepo := postgres.NewUserRepository(db)
 	postRepo := postgres.NewPostRepository(db)
 	refreshRepo := postgres.NewRefreshTokenRepository(db)
+	mediaRepo := postgres.NewMediaRepository(db)
+
+	localStorage, err := storage.NewLocalStorage(cfg.UploadDir)
+	if err != nil {
+		log.Fatalf("storage init error: %v", err)
+	}
 
 	authService := auth.NewService(userRepo, refreshRepo, cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 	if err := authService.EnsureSuperAdmin(context.Background(), cfg.SeedSuperAdminEmail, cfg.SeedSuperAdminPassword, cfg.SeedSuperAdminFullName); err != nil {
 		log.Fatalf("seed super admin error: %v", err)
 	}
 	postService := posts.NewService(postRepo)
+	mediaService := media.NewService(mediaRepo, localStorage, cfg.MaxFileSizeMB)
 
 	router := httpapi.NewRouter(httpapi.Dependencies{
-		Config:      cfg,
-		AuthService: authService,
-		PostService: postService,
-		StartedAt:   time.Now().UTC(),
+		Config:       cfg,
+		AuthService:  authService,
+		PostService:  postService,
+		MediaService: mediaService,
+		StartedAt:    time.Now().UTC(),
 	})
 
 	srv := &http.Server{

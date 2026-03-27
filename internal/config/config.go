@@ -27,6 +27,8 @@ type Config struct {
 	SeedSuperAdminEmail    string
 	SeedSuperAdminPassword string
 	SeedSuperAdminFullName string
+	UploadDir              string
+	MaxFileSizeMB          int
 }
 
 func Load() (Config, error) {
@@ -49,6 +51,8 @@ func Load() (Config, error) {
 		SeedSuperAdminEmail:    getEnv("SEED_SUPERADMIN_EMAIL", ""),
 		SeedSuperAdminPassword: getEnv("SEED_SUPERADMIN_PASSWORD", ""),
 		SeedSuperAdminFullName: getEnv("SEED_SUPERADMIN_FULL_NAME", "Super Admin"),
+		UploadDir:              getEnv("UPLOAD_DIR", "./uploads"),
+		MaxFileSizeMB:          getEnvInt("MAX_FILE_SIZE_MB", 10),
 	}
 
 	if cfg.DBDSN == "" {

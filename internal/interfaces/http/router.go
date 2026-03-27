@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"blog_api/internal/application/auth"
+	"blog_api/internal/application/media"
 	"blog_api/internal/application/posts"
 	"blog_api/internal/config"
 	"blog_api/internal/domain"
@@ -17,16 +18,18 @@ import (
 )
 
 type Dependencies struct {
-	Config      config.Config
-	AuthService *auth.Service
-	PostService *posts.Service
-	StartedAt   time.Time
+	Config       config.Config
+	AuthService  *auth.Service
+	PostService  *posts.Service
+	MediaService *media.Service
+	StartedAt    time.Time
 }
 
 func NewRouter(deps Dependencies) http.Handler {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	authHandler := handlers.NewAuthHandler(deps.AuthService, validate)
 	postsHandler := handlers.NewPostsHandler(deps.PostService, validate)
+	mediaHandler := handlers.NewMediaHandler(deps.MediaService)
 	systemHandler := handlers.NewSystemHandler(deps.StartedAt)
 
 	r := chi.NewRouter()
@@ -51,6 +54,8 @@ func NewRouter(deps Dependencies) http.Handler {
 	r.Get("/healthz", systemHandler.Health)
 	// Serve minimal admin SPA files.
 	r.Handle("/admin/*", http.StripPrefix("/admin/", http.FileServer(http.Dir("web/admin"))))
+	// Serve uploaded media files.
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(deps.Config.UploadDir))))
 
 	r.Route("/auth", func(ar chi.Router) {
 		ar.Post("/login", authHandler.Login)
@@ -67,6 +72,10 @@ func NewRouter(deps Dependencies) http.Handler {
 			ps.Get("/{id}", postsHandler.Get)
 			ps.Put("/{id}", postsHandler.Update)
 			ps.Delete("/{id}", postsHandler.Delete)
+		})
+		pr.Route("/media", func(ms chi.Router) {
+			ms.Post("/upload", mediaHandler.Upload)
+			ms.Get("/{id}", mediaHandler.Get)
 		})
 	})
 
