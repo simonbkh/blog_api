@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blog Admin</title>
+  <link rel="stylesheet" href="/admin/style.css" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+</head>
+<body>
+  <main id="app" class="container">
+    <section class="card" v-if="!state.accessToken">
+      <h1>Blog Admin Login</h1>
+      <form @submit.prevent="login">
+        <label>Email</label>
+        <input v-model="form.email" type="email" required />
+        <label>Password</label>
+        <input v-model="form.password" type="password" required minlength="8" />
+        <button :disabled="state.loading">{{ state.loading ? 'Signing in...' : 'Login' }}</button>
+      </form>
+      <p class="error" v-if="state.error">{{ state.error }}</p>
+    </section>
+
+    <section class="card" v-else>
+      <div class="header-row">
+        <h1>Posts</h1>
+        <div class="header-actions">
+          <span class="badge">{{ state.me.role }}</span>
+          <button @click="logout">Logout</button>
+        </div>
+      </div>
+
+      <form class="post-form" @submit.prevent="submitPost">
+        <h2>{{ form.id ? 'Edit post' : 'Create post' }}</h2>
+        <label>Title</label>
+        <input v-model="form.title" required />
+        <label>Content</label>
+        <textarea v-model="form.content" rows="6" required></textarea>
+        <label>Status</label>
+        <select v-model="form.status">
+          <option value="draft">draft</option>
+          <option value="published">published</option>
+        </select>
+        <label v-if="canSetAuthor">Author ID (admin only)</label>
+        <input v-if="canSetAuthor" v-model.number="form.author_id" type="number" min="1" />
+        <div class="actions">
+          <button :disabled="state.loading">{{ form.id ? 'Update' : 'Create' }}</button>
+          <button type="button" @click="resetForm" v-if="form.id">Cancel</button>
+        </div>
+      </form>
+
+      <p class="error" v-if="state.error">{{ state.error }}</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Title</th><th>Status</th><th>Author</th><th>Updated</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="post in state.posts" :key="post.id">
+            <td>{{ post.id }}</td>
+            <td>{{ post.title }}</td>
+            <td>{{ post.status }}</td>
+            <td>{{ post.author_id }}</td>
+            <td>{{ new Date(post.updated_at).toLocaleString() }}</td>
+            <td>
+              <button @click="editPost(post)">Edit</button>
+              <button class="danger" @click="deletePost(post.id)">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/admin/main.js"></script>
+</body>
+</html>
